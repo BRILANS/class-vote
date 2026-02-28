@@ -7,7 +7,34 @@ from collections import Counter
 # --- 1. 페이지 설정 ---
 st.set_page_config(page_title="학급회장 선거", layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 스타일 및 데이터 초기화 ---
+# --- 2. 데이터 초기화 ---
+if 'votes' not in st.session_state: st.session_state.votes = []
+if 'candidates' not in st.session_state: st.session_state.candidates = []
+if 'has_voted' not in st.session_state: st.session_state.has_voted = False
+if 'is_counting' not in st.session_state: st.session_state.is_counting = False
+if 'show_winner' not in st.session_state: st.session_state.show_winner = False
+if 'show_force_button' not in st.session_state: st.session_state.show_force_button = False
+if 'is_teacher_mode' not in st.session_state: st.session_state.is_teacher_mode = False
+if 'election_info' not in st.session_state:
+    st.session_state.election_info = {"year": 2026, "semester": 1, "grade": 1, "class": 1, "target": 25}
+
+# --- 3. 비밀 통로 (URL 모드) ---
+query_params = st.query_params
+
+if query_params.get("mode") == "teacher":
+    # 이미 인증된 상태가 아니라면
+    if not st.session_state.is_teacher_mode:
+        password = st.sidebar.text_input("교사 비밀번호", type="password")
+        if password == "1234":
+            st.session_state.is_teacher_mode = True
+            st.rerun() # 비밀번호 맞으면 다시 화면을 그려서 관리자 모드로 진입
+        elif password != "": # 비밀번호를 입력했는데 틀린 경우
+            st.error("비밀번호가 틀렸습니다.")
+            st.stop()
+        else: # 아직 입력 전인 경우
+            st.stop() # 아무것도 하지 말고 멈춤
+
+# --- CSS 애니메이션 ---
 animation_css = """
 <style>
 @keyframes unfold { 0% { transform: scaleY(0); opacity: 0; } 100% { transform: scaleY(1); opacity: 1; } }
@@ -15,29 +42,10 @@ animation_css = """
 </style>
 """
 
-if 'votes' not in st.session_state: st.session_state.votes = []
-if 'candidates' not in st.session_state: st.session_state.candidates = []
-if 'has_voted' not in st.session_state: st.session_state.has_voted = False
-if 'is_counting' not in st.session_state: st.session_state.is_counting = False
-if 'show_winner' not in st.session_state: st.session_state.show_winner = False
-if 'show_force_button' not in st.session_state: st.session_state.show_force_button = False
-if 'election_info' not in st.session_state:
-    st.session_state.election_info = {"year": 2026, "semester": 1, "grade": 1, "class": 1, "target": 25}
-
-# --- 3. 비밀 통로 (URL 모드) ---
-query_params = st.query_params
-is_teacher_mode = False
-if query_params.get("mode") == "teacher":
-    password = st.sidebar.text_input("교사 비밀번호", type="password")
-    if password == "1234": # 비밀번호
-        is_teacher_mode = True
-    else:
-        st.error("비밀번호가 틀렸습니다.")
-
 # ---------------------------------------------------------
 # [교사 모드]
 # ---------------------------------------------------------
-if is_teacher_mode:
+if st.session_state.is_teacher_mode:
     st.title("👨‍🏫 선거 관리자 모드")
     tab1, tab2, tab3 = st.tabs(["1. 정보 설정", "2. 후보 관리", "3. 개표 대시보드"])
 
