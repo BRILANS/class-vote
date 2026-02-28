@@ -81,14 +81,18 @@ if st.session_state.is_teacher_mode:
                     save_data(class_id, data); st.rerun()
 
         with tab3:
-            st.info(f"현재 투표수: {len(data['votes'])} / {data['info']['target']}")
-            if st.button("🔄 투표 초기화"): 
+            # 🔄 실시간 확인 버튼
+            if st.button("🔄 현재 투표 인원 확인하기"):
+                data = load_data(class_id) # 최신 데이터 다시 불러오기
+            
+            st.info(f"현재 집계된 투표수: {len(data['votes'])} / {data['info']['target']}")
+            
+            if st.button("🔄 투표 전체 초기화"): 
                 data["votes"] = []; save_data(class_id, data)
                 st.session_state.counting_finished = False
                 st.session_state.show_winner_screen = False
                 st.rerun()
             
-            # 1. 개표 시작 버튼
             if st.button("🔥 개표 시작"):
                 st.session_state.counting_finished = False
                 st.session_state.show_winner_screen = False
@@ -107,19 +111,15 @@ if st.session_state.is_teacher_mode:
                     st.session_state.counting_finished = True
                     st.rerun()
             
-            # 2. 개표 완료 후 '당선자 확인하기' 버튼
             if st.session_state.counting_finished:
                 st.success("🎉 개표 완료!")
                 if st.button("당선자 확인하기"):
                     st.session_state.show_winner_screen = True
                     st.rerun()
 
-            # 3. 당선자 화면
             if st.session_state.show_winner_screen:
                 counts = Counter(data["votes"])
                 winner_name, count = counts.most_common(1)[0]
-                
-                # 기호 찾기 (리스트 index + 1)
                 candidates_list = [c['name'] for c in data["candidates"]]
                 winner_idx = candidates_list.index(winner_name) + 1
                 
