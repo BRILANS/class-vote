@@ -20,19 +20,18 @@ if 'election_info' not in st.session_state:
 
 # --- 3. 비밀 통로 (URL 모드) ---
 query_params = st.query_params
+is_teacher_url = query_params.get("mode") == "teacher"
 
-if query_params.get("mode") == "teacher":
-    # 이미 인증된 상태가 아니라면
-    if not st.session_state.is_teacher_mode:
-        password = st.sidebar.text_input("교사 비밀번호", type="password")
-        if password == "1234":
-            st.session_state.is_teacher_mode = True
-            st.rerun() # 비밀번호 맞으면 다시 화면을 그려서 관리자 모드로 진입
-        elif password != "": # 비밀번호를 입력했는데 틀린 경우
-            st.error("비밀번호가 틀렸습니다.")
-            st.stop()
-        else: # 아직 입력 전인 경우
-            st.stop() # 아무것도 하지 말고 멈춤
+# 선생님 모드 진입 로직
+if is_teacher_url and not st.session_state.is_teacher_mode:
+    st.title("🔐 관리자 인증")
+    password = st.text_input("교사 비밀번호를 입력하세요", type="password")
+    if password == "1234":
+        st.session_state.is_teacher_mode = True
+        st.rerun()
+    elif password != "":
+        st.error("비밀번호가 틀렸습니다.")
+    st.stop() # 여기서 멈춰야 비밀번호 입력 전엔 아무것도 안 뜹니다.
 
 # --- CSS 애니메이션 ---
 animation_css = """
