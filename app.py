@@ -65,9 +65,14 @@ if st.session_state.is_teacher_mode:
             st.markdown(animation_css, unsafe_allow_html=True)
             st.info(f"현재 집계된 투표수: {len(data['votes'])} / {data['info']['target']}")
             
-            # [수정된 개표 로직]
+            # [새로 추가된 기능] 투표 초기화 버튼
+            if st.button("🔄 투표 전체 초기화"):
+                data["votes"] = []
+                save_data(class_id, data)
+                st.warning("모든 투표 기록이 삭제되었습니다!")
+                st.rerun()
+            
             if st.button("🔥 개표 시작"):
-                # 개표할 때 파일을 한 번 더 확실하게 새로 읽어옴
                 latest_data = load_data(class_id)
                 votes = latest_data["votes"]
                 
@@ -79,11 +84,10 @@ if st.session_state.is_teacher_mode:
                     for i, vote in enumerate(votes):
                         with box.container():
                             st.markdown(f'<div class="paper-box"><h2>{i+1}번째 투표지</h2><h1>{vote}</h1></div>', unsafe_allow_html=True)
-                        time.sleep(1.2) # 속도 조절
+                        time.sleep(1.2) 
                     
                     st.balloons()
                     st.success("🎉 개표 완료!")
-                    # 결과 집계
                     counts = Counter(votes)
                     winner, count = counts.most_common(1)[0]
                     st.markdown(f"## 🏆 당선자: {winner} ({count}표)")
