@@ -11,6 +11,7 @@ animation_css = """
 <style>
 @keyframes unfold { 0% { transform: scaleY(0); opacity: 0; } 100% { transform: scaleY(1); opacity: 1; } }
 .paper-box { background-color: white; border: 3px solid #ff4b4b; padding: 30px; border-radius: 10px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); text-align: center; animation: unfold 0.8s ease-out forwards; transform-origin: top; }
+.winner-card { background-color: #fff8e1; border: 5px solid #ffc107; padding: 40px; border-radius: 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
 </style>
 """
 
@@ -31,10 +32,14 @@ def save_data(class_id, data):
 st.set_page_config(page_title="학급회장 선거", layout="centered", initial_sidebar_state="collapsed")
 st.markdown(animation_css, unsafe_allow_html=True)
 
+# --- 상태 초기화 ---
+if 'is_teacher_mode' not in st.session_state: st.session_state.is_teacher_mode = False
+if 'counting_finished' not in st.session_state: st.session_state.counting_finished = False
+if 'show_winner_screen' not in st.session_state: st.session_state.show_winner_screen = False
+
 # --- 인증 처리 ---
 query_params = st.query_params
 is_teacher = query_params.get("mode") == "teacher"
-if 'is_teacher_mode' not in st.session_state: st.session_state.is_teacher_mode = False
 
 if is_teacher and not st.session_state.is_teacher_mode:
     password = st.sidebar.text_input("교사 비밀번호", type="password")
@@ -59,10 +64,8 @@ if st.session_state.is_teacher_mode:
             st.session_state.grade = col1.number_input("학년", value=data["info"].get("grade", 1))
             st.session_state.class_num = col2.number_input("반", value=data["info"].get("class", 1))
             st.session_state.target = st.number_input("목표 투표 인원", value=data["info"].get("target", 25))
-            
             if st.button("정보 저장"):
-                data["info"].update({"school": st.session_state.school, "type": st.session_state.type, 
-                                     "grade": st.session_state.grade, "class": st.session_state.class_num, "target": st.session_state.target})
+                data["info"].update({"school": st.session_state.school, "type": st.session_state.type, "grade": st.session_state.grade, "class": st.session_state.class_num, "target": st.session_state.target})
                 save_data(class_id, data); st.success("저장 완료!")
 
         with tab2:
@@ -71,7 +74,6 @@ if st.session_state.is_teacher_mode:
                 if st.form_submit_button("후보 추가"):
                     data["candidates"].append({"name": name})
                     save_data(class_id, data); st.rerun()
-            
             if data["candidates"]:
                 del_name = st.selectbox("삭제할 후보 선택", [c['name'] for c in data["candidates"]])
                 if st.button("선택한 후보 삭제"):
@@ -81,10 +83,15 @@ if st.session_state.is_teacher_mode:
         with tab3:
             st.info(f"현재 투표수: {len(data['votes'])} / {data['info']['target']}")
             if st.button("🔄 투표 초기화"): 
-                data["votes"] = []; save_data(class_id, data); st.rerun()
+                data["votes"] = []; save_data(class_id, data)
+                st.session_state.counting_finished = False
+                st.session_state.show_winner_screen = False
+                st.rerun()
             
-            # [수정된 개표 로직]
+            # 1. 개표 시작 버튼
             if st.button("🔥 개표 시작"):
+                st.session_state.counting_finished = False
+                st.session_state.show_winner_screen = False
                 latest_data = load_data(class_id)
                 votes = latest_data["votes"]
                 if not votes:
@@ -97,10 +104,34 @@ if st.session_state.is_teacher_mode:
                             st.markdown(f'<div class="paper-box"><h2>{i+1}번째 투표지</h2><h1>{vote}</h1></div>', unsafe_allow_html=True)
                         time.sleep(1.0)
                     st.balloons()
-                    st.success("🎉 개표 완료!")
-                    counts = Counter(votes)
-                    winner, count = counts.most_common(1)[0]
-                    st.markdown(f"## 🏆 당선자: {winner} ({count}표)")
+                    st.session_state.counting_finished = True
+                    st.rerun()
+            
+            # 2. 개표 완료 후 '당선자 확인하기' 버튼
+            if st.session_state.counting_finished:
+                st.success("🎉 개표 완료!")
+                if st.button("당선자 확인하기"):
+                    st.session_state.show_winner_screen = True
+                    st.rerun()
+
+            # 3. 당선자 화면
+            if st.session_state.show_winner_screen:
+                counts = Counter(data["votes"])
+                winner_name, count = counts.most_common(1)[0]
+                
+                # 기호 찾기 (리스트 index + 1)
+                candidates_list = [c['name'] for c in data["candidates"]]
+                winner_idx = candidates_list.index(winner_name) + 1
+                
+                st.markdown(f"""
+                <div class="winner-card">
+                    <h1>당선을 축하합니다!</h1>
+                    <br>
+                    <h1>기호 {winner_idx}번 {winner_name}</h1>
+                    <br>
+                    <h2>({count}표)</h2>
+                </div>
+                """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
 # [학생 모드]
